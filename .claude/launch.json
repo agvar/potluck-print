@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "potluck-dev",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--", "--port", "5173", "--strictPort"],
+      "port": 5173
+    },
+    {
+      "name": "potluck-ui-check",
+      "runtimeExecutable": "env",
+      "runtimeArgs": ["VITE_SUPABASE_URL=https://demo-placeholder.supabase.co", "VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_placeholder", "npx", "vite", "--port", "5174", "--strictPort"],
+      "port": 5174
+    }
+  ]
+}

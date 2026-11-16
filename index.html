@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#c2541b" />
+    <title>Potluck Dish Label</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  </head>
+  <body>
+    <main class="wrap">
+      <header>
+        <h1>🍲 Label your dish</h1>
+        <p class="sub">Tell everyone what's in your dish. We'll print a label for it.</p>
+      </header>
+
+      <form id="dish-form" class="card" novalidate>
+        <label class="field">
+          Dish name <span class="counter" data-for="dish_name"></span>
+          <input type="text" name="dish_name" maxlength="60" required autocomplete="off"
+                 placeholder="e.g. Mango Salsa" enterkeyhint="next" />
+        </label>
+
+        <label class="field">
+          Your name <span class="counter" data-for="cook_name"></span>
+          <input type="text" name="cook_name" maxlength="40" required autocomplete="given-name"
+                 placeholder="e.g. Priya" enterkeyhint="next" />
+        </label>
+
+        <label class="field">
+          Ingredients <span class="counter" data-for="ingredients"></span>
+          <span class="hint">Separate with commas or put one per line. Tip: tap the 🎤 on your keyboard to speak them.</span>
+          <textarea name="ingredients" maxlength="1000" required
+                    placeholder="mango, red onion, cilantro, lime juice, jalapeño, salt"></textarea>
+        </label>
+
+        <fieldset>
+          <legend>Contains any of these allergens?</legend>
+          <div class="chips" id="allergen-chips"></div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Diet info <span class="muted small">(optional)</span></legend>
+          <div class="chips" id="diet-chips"></div>
+        </fieldset>
+
+        <h2>Label preview</h2>
+        <div class="preview" id="preview" aria-label="Label preview"></div>
+
+        <div class="msg error" id="form-error" role="alert" hidden></div>
+
+        <p></p>
+        <button type="submit" class="primary big" id="submit-btn">Submit for printing</button>
+      </form>
+
+      <section class="card" id="done" hidden>
+        <h2>✅ Thanks! Your dish is in the print queue.</h2>
+        <p>Your label will be printed shortly. Pick it up at the print table.</p>
+        <button type="button" class="big" id="another-btn">Add another dish</button>
+      </section>
+    </main>
+    <script type="module" src="/src/guest.js"></script>
+  </body>
+</html>

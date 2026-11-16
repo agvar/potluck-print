@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#c2541b" />
+    <meta name="robots" content="noindex" />
+    <title>Potluck Print Queue</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  </head>
+  <body>
+    <main class="wrap">
+      <!-- Login -->
+      <section id="login-view" class="card" hidden>
+        <h1>🖨️ Print queue</h1>
+        <p class="sub">Admin sign-in</p>
+        <form id="login-form">
+          <label class="field">Email
+            <input type="email" name="email" required autocomplete="username" />
+          </label>
+          <label class="field">Password
+            <input type="password" name="password" required autocomplete="current-password" />
+          </label>
+          <div class="msg error" id="login-error" role="alert" hidden></div>
+          <button type="submit" class="primary big">Sign in</button>
+        </form>
+      </section>
+
+      <!-- Main admin view -->
+      <div id="app-view" hidden>
+        <div class="topbar">
+          <h1>🖨️ Print queue</h1>
+          <div class="row" style="flex:0 0 auto;align-items:center">
+            <span class="pill" id="live-pill">connecting…</span>
+            <button type="button" id="signout-btn" style="min-height:36px;padding:4px 10px;font-size:.85rem">Sign out</button>
+          </div>
+        </div>
+
+        <section class="card" id="print-card">
+          <div class="row" style="align-items:baseline;justify-content:space-between">
+            <div><span class="bigcount" id="waiting-count">0</span> <span class="muted">waiting</span></div>
+            <div class="muted small" id="leftover-status"></div>
+          </div>
+          <p></p>
+          <div class="row" style="flex-direction:column">
+            <button type="button" class="primary big" id="print-pair-btn">Print next 2</button>
+            <button type="button" class="primary big" id="print-leftover-btn">Print next 1 on leftover half</button>
+            <button type="button" class="big" id="print-fresh-btn">Print next 1 on a fresh sheet</button>
+            <button type="button" id="discard-btn">Discard leftover half</button>
+          </div>
+          <div class="msg" id="print-msg" hidden></div>
+          <button type="button" id="reopen-btn" hidden>Open last PDF again</button>
+        </section>
+
+        <section class="card">
+          <h2>Waiting</h2>
+          <div id="waiting-list"></div>
+        </section>
+
+        <section class="card">
+          <details>
+            <summary>Printed (<span id="printed-count">0</span>)</summary>
+            <div id="printed-list"></div>
+          </details>
+        </section>
+
+        <section class="card" id="summary-card">
+          <details id="summary-details">
+            <summary>Buffet allergen list</summary>
+            <button type="button" id="print-summary-btn">Print this list</button>
+            <p></p>
+            <table class="summary">
+              <thead><tr><th>Dish</th><th>Cook</th><th>Allergens</th><th>Diet</th></tr></thead>
+              <tbody id="summary-body"></tbody>
+            </table>
+          </details>
+        </section>
+
+        <section class="card">
+          <details>
+            <summary>Guest QR code</summary>
+            <p class="small muted">Guests scan this to open the dish form. Print it or show it on your phone.</p>
+            <img id="qr-img" alt="QR code for the guest page" />
+            <p class="small"><a id="guest-link" target="_blank" rel="noopener"></a></p>
+            <a class="btn" id="qr-download" download="potluck-qr.png">Download QR image</a>
+          </details>
+        </section>
+
+        <section class="card">
+          <details>
+            <summary>Label position (calibration)</summary>
+            <p class="small muted">Measure your label sheet in inches. Then print the alignment test on
+              plain paper and hold it over a label sheet against a window. Use "nudge" to shift everything.
+              Saved on this device only.</p>
+            <form id="layout-form">
+              <div class="grid2">
+                <label class="field">Left margin <input type="number" step="0.01" name="leftMargin" /></label>
+                <label class="field">Top margin <input type="number" step="0.01" name="topMargin" /></label>
+                <label class="field">Gap between labels <input type="number" step="0.01" name="gap" /></label>
+                <label class="field">Label height <input type="number" step="0.01" name="labelHeight" /></label>
+                <label class="field">Nudge right (+) / left (−) <input type="number" step="0.01" name="nudgeX" /></label>
+                <label class="field">Nudge down (+) / up (−) <input type="number" step="0.01" name="nudgeY" /></label>
+              </div>
+              <div class="row">
+                <button type="submit" class="primary">Save</button>
+                <button type="button" id="layout-reset-btn">Reset</button>
+              </div>
+              <p></p>
+              <div class="row">
+                <button type="button" id="test-align-btn">Print alignment test</button>
+                <button type="button" id="test-sample-btn">Print sample labels</button>
+              </div>
+            </form>
+          </details>
+        </section>
+      </div>
+
+      <!-- Edit dialog -->
+      <dialog id="edit-dialog">
+        <form id="edit-form" method="dialog">
+          <h2>Edit dish</h2>
+          <label class="field">Dish name <input type="text" name="dish_name" maxlength="60" required /></label>
+          <label class="field">Cook <input type="text" name="cook_name" maxlength="40" required /></label>
+          <label class="field">Ingredients <textarea name="ingredients" maxlength="1000" required></textarea></label>
+          <fieldset><legend>Allergens</legend><div class="chips" id="edit-allergens"></div></fieldset>
+          <fieldset><legend>Diet</legend><div class="chips" id="edit-diet"></div></fieldset>
+          <div class="msg error" id="edit-error" hidden></div>
+          <div class="row">
+            <button type="submit" value="save" class="primary">Save</button>
+            <button type="submit" value="cancel" formnovalidate>Cancel</button>
+            <button type="button" id="delete-btn" class="danger">Delete</button>
+          </div>
+        </form>
+      </dialog>
+    </main>
+    <script type="module" src="/src/admin.js"></script>
+  </body>
+</html>
