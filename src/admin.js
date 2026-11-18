@@ -395,7 +395,8 @@ function dishRow(d) {
   return h('div', { className: 'dish' },
     h('div', { className: 'title' }, d.dish_name, ' ', d.priority ? h('span', { className: 'pill front' }, 'next') : null),
     h('div', { className: 'meta' },
-      `by ${d.cook_name} · ${d.status === 'printed' ? `printed ${timeAgo(d.printed_at)}` : timeAgo(d.created_at)}`),
+      [d.cook_name ? `by ${d.cook_name}` : null,
+        d.status === 'printed' ? `printed ${timeAgo(d.printed_at)}` : timeAgo(d.created_at)].filter(Boolean).join(' · ')),
     h('div', { className: 'meta' }, allergens),
     h('div', { className: 'actions' }, actions),
   );
@@ -514,7 +515,7 @@ function render() {
 
   $('summary-body').replaceChildren(...state.dishes.map((d) => h('tr', {},
     h('td', {}, d.dish_name),
-    h('td', {}, d.cook_name),
+    h('td', {}, d.cook_name || '—'),
     h('td', {}, d.allergens.map((k) => labelFor(ALLERGENS, k)).join(', ') || '—'),
     h('td', {}, d.diet_tags.map((k) => labelFor(DIET_TAGS, k)).join(', ') || '—'),
   )));

@@ -43,7 +43,7 @@ const BIG_STYLE = {
   heading: 10, ingredients: [18, 7], space: 1,
 };
 const SMALL_STYLE = {
-  pad: 0.13, name: [22, 12, 3], cook: 10, allergens: [12, 8, 3], diet: [10, 8, 2],
+  pad: 0.13, name: [22, 12, 3], cook: 10, allergens: [12, 8, 3], diet: [10, 8, 3],
   heading: 8, ingredients: [13, 6], space: 0.6,
 };
 
@@ -107,10 +107,13 @@ function drawLabel(doc, dish, x0, y0, w, h, s) {
   const name = fitText(doc, clean(dish.dish_name), width, s.name);
   y = drawLines(doc, name.lines, left, y, name.size);
 
-  // Cook
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(s.cook);
-  y = drawLines(doc, doc.splitTextToSize(`by ${clean(dish.cook_name)}`, width).slice(0, 1), left, y + 0.03, s.cook);
+  // Cook (optional: skip the line when no name was given)
+  const cook = clean(dish.cook_name);
+  if (cook) {
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(s.cook);
+    y = drawLines(doc, doc.splitTextToSize(`by ${cook}`, width).slice(0, 1), left, y + 0.03, s.cook);
+  }
 
   // Divider
   y += 0.1 * s.space;

@@ -1,6 +1,7 @@
 // Makes sample PDFs in ./samples so you can check the label design without the app.
 // Run: npm run test:pdf
 import { mkdirSync, writeFileSync } from 'node:fs';
+import { ALLERGENS, DIET_TAGS } from '../src/constants.js';
 import {
   buildSheetPdf, buildAlignmentPdf, DEFAULT_LAYOUT,
   buildRollPdf, buildRollTestPdf, BROTHER_DEFAULT,
@@ -25,8 +26,9 @@ const long = {
     'golden raisins', 'rose water', 'kewra water', 'boiled eggs', 'fried potatoes',
     'vegetable oil', 'black pepper', 'fennel seeds', 'dried fenugreek leaves',
   ].join(', ').repeat(2),
-  allergens: ['milk', 'eggs', 'tree_nuts', 'wheat', 'sesame'],
-  diet_tags: ['spicy', 'contains_alcohol'],
+  // Worst case: every allergen and every diet tag ticked.
+  allergens: ALLERGENS.map((a) => a.key),
+  diet_tags: DIET_TAGS.map((t) => t.key),
 };
 
 mkdirSync('samples', { recursive: true });

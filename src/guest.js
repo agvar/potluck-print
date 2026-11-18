@@ -55,7 +55,7 @@ function renderPreview() {
   const d = readForm();
   preview.replaceChildren(
     el('div', 'p-name', d.dish_name || 'Your dish name'),
-    el('div', 'p-cook', `by ${d.cook_name || 'your name'}`),
+    ...(d.cook_name ? [el('div', 'p-cook', `by ${d.cook_name}`)] : []),
     el('hr'),
     el('div', 'p-allergens', d.allergens.length
       ? `CONTAINS: ${d.allergens.map((k) => labelFor(ALLERGENS, k).toUpperCase()).join(' · ')}`
@@ -95,10 +95,9 @@ function clearDraft() {
 
 function validate(d) {
   if (!d.dish_name) return 'Please enter the dish name.';
-  if (!d.cook_name) return 'Please enter your name.';
   if (!d.ingredients) return 'Please list the ingredients.';
   if (d.diet_tags.includes('vegan') && (d.allergens.includes('milk') || d.allergens.includes('eggs'))) {
-    return 'You marked this vegan but also "Milk" or "Eggs". Please double-check.';
+    return 'You marked this vegan but also "Dairy" or "Eggs". Please double-check.';
   }
   return null;
 }

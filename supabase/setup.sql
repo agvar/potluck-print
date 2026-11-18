@@ -15,7 +15,7 @@ create table if not exists public.dishes (
   id           bigint generated always as identity primary key,
   created_at   timestamptz not null default now(),
   dish_name    text not null check (char_length(trim(dish_name)) between 1 and 60),
-  cook_name    text not null check (char_length(trim(cook_name)) between 1 and 40),
+  cook_name    text not null default '' check (char_length(trim(cook_name)) <= 40),  -- optional
   ingredients  text not null check (char_length(trim(ingredients)) between 1 and 1000),
   allergens    text[] not null default '{}'
                check (cardinality(allergens) <= 20 and char_length(array_to_string(allergens, ',')) <= 300),
@@ -28,6 +28,13 @@ create table if not exists public.dishes (
 );
 
 create index if not exists dishes_queue_idx on public.dishes (status, priority desc, created_at);
+
+-- Update for tables created before the cook's name became optional:
+-- "create table if not exists" skips an existing table, so swap the rule here.
+alter table public.dishes alter column cook_name set default '';
+alter table public.dishes drop constraint if exists dishes_cook_name_check;
+alter table public.dishes add constraint dishes_cook_name_check
+  check (char_length(trim(cook_name)) <= 40);
 
 
 -- ---------------------------------------------------------------------
@@ -184,7 +191,9 @@ begin
     body    := jsonb_strip_nulls(jsonb_build_object(
                  'topic',   cfg.ntfy_topic,
                  'title',   'New dish: ' || new.dish_name,
-                 'message', 'by ' || new.cook_name || ' - ' || waiting || ' waiting'
+                 'message', case when trim(new.cook_name) = '' then ''
+                                 else 'by ' || new.cook_name || ' - ' end
+                            || waiting || ' waiting'
                             || case when waiting >= 2 then ' (ready to print a pair)'
                                     else ' (wait for a pair or print 1 now)' end,
                  'tags',    jsonb_build_array('stew'),
