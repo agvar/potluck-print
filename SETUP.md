@@ -135,9 +135,25 @@ From now on: change code, `git commit`, `git push`, and Vercel updates the site 
 
 ## Part 5: Printer and label test, ~15 min
 
+### Brother QL-810Wc (main printer)
+
+1. iPhone and printer on the same network (or the iPhone joined to the printer's
+   `DIRECT-xxxxx_QL-810W` network). DK-2205 roll loaded, cover closed.
+2. Admin page → **Printer & label settings** → choose **Brother QL-810Wc**.
+3. **Print test label** → Share → **Print** → Brother → Print. The **dashed box must be fully
+   visible**. If text is cut off on one side, change **Nudge** (e.g. `0.05`) → **Save** → test again.
+4. **Print sample label** to see a real label. Want longer or shorter labels? Change
+   **Label length** (default 4").
+5. At the party: tap **Print** on a dish (or **Print next** / **Print all waiting**). Each dish
+   comes out as its own cut label.
+
+### DeskJet (backup, 7" × 5" sheets)
+
+Admin page → **Printer & label settings** → choose **DeskJet**, then:
+
 1. Make sure the DeskJet is on Wi-Fi and your iPhone can print to it
    (open any photo → Share → Print → it should list the DeskJet).
-2. Admin page → **Label position** → **Print alignment test** → in the share sheet tap
+2. **Print alignment test** → in the share sheet tap
    **Print** → DeskJet → set **Scale 100%** if offered → Print on **plain paper**.
 3. Hold the printout over a label sheet against a window or lamp.
    - The solid boxes should match the label edges.
@@ -166,7 +182,8 @@ Guests don't need any of these. They use their own mobile data.
 
 ## Party-day checklist
 
-- [ ] Printer: on, on the network, paper tray loaded with label sheets (right side up), ink OK
+- [ ] Brother: on, on the network, fresh DK-2205 roll loaded (plus a spare); admin set to **Brother**
+- [ ] Backup DeskJet in the car with label sheets and ink
 - [ ] iPhone: charged and **plugged in**, Auto-Lock **Never**, Focus/Do Not Disturb **off**
 - [ ] ntfy notifications working (submit a test dish, then delete it in Edit)
 - [ ] Admin page open and signed in, "live" badge showing

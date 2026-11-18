@@ -1,7 +1,8 @@
 # Potluck Print 🍲🖨️
 
 Guests scan a QR code, type their dish and ingredients on their phone, and you print a
-7" × 5" label (2 per sheet) from your iPhone at the party.
+label from your iPhone at the party: on a **Brother QL-810Wc** (62 mm DK-2205 roll, one cut
+label per dish), or on a **DeskJet** with 7" × 5" sheets (2 per sheet) as a backup.
 
 **First time?** Follow [SETUP.md](SETUP.md).
 
@@ -11,7 +12,7 @@ Guests scan a QR code, type their dish and ingredients on their phone, and you p
 Guest phone (mobile data)                         Your iPhone (same Wi-Fi as printer)
   index.html  ──insert──►  Supabase  ──live──►     admin.html
                               │                       │ builds label PDF (jsPDF)
-                              └─► ntfy ─► 🔔          └─► Share → Print → DeskJet
+                              └─► ntfy ─► 🔔          └─► Share → Print → Brother (or DeskJet)
 ```
 
 - **No server code of our own.** The site is static files on Vercel. Supabase is the database,

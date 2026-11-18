@@ -1,10 +1,14 @@
-// Admin page: live print queue, pair / single printing, leftover-half tracking,
-// edit / reprint, allergen summary, guest QR code and label calibration.
+// Admin page: live print queue, label printing (Brother roll printer, or DeskJet
+// sheets as a backup with pair / single printing and leftover-half tracking),
+// edit / reprint, allergen summary, guest QR code and label settings.
 import './styles.css';
 import QRCode from 'qrcode';
 import { supabase, isConfigured, showConfigError } from './supabase.js';
 import { ALLERGENS, DIET_TAGS, labelFor } from './constants.js';
-import { buildSheetPdf, buildAlignmentPdf, DEFAULT_LAYOUT } from './label-pdf.js';
+import {
+  buildSheetPdf, buildAlignmentPdf, DEFAULT_LAYOUT,
+  buildRollPdf, buildRollTestPdf, BROTHER_DEFAULT,
+} from './label-pdf.js';
 
 if (!isConfigured) {
   showConfigError();
@@ -12,7 +16,14 @@ if (!isConfigured) {
 }
 
 const $ = (id) => document.getElementById(id);
-const LAYOUT_KEY = 'potluck-layout-v1';
+const LAYOUT_KEY = 'potluck-layout-v1';    // DeskJet sheet positions
+const ROLL_KEY = 'potluck-roll-v1';        // Brother label length + nudge
+const PRINTER_KEY = 'potluck-printer-v1';  // 'brother' (default) or 'deskjet'
+
+const SAMPLE_DISHES = [
+  { dish_name: 'Sample: Mango Salsa', cook_name: 'Test', ingredients: 'mango, red onion, cilantro, lime, jalapeño, salt', allergens: [], diet_tags: ['vegan', 'spicy'] },
+  { dish_name: 'Sample: Chicken Biryani', cook_name: 'Test', ingredients: 'basmati rice, chicken, yogurt, ghee, onions, garlic, ginger, saffron, cashews, spices', allergens: ['milk', 'tree_nuts'], diet_tags: [] },
+];
 
 const state = {
   dishes: [],
@@ -190,13 +201,22 @@ const freeSlot = (sheet) => (sheet.top_used ? 'bottom' : 'top');
 // ---------------------------------------------------------------------
 // Printing
 // ---------------------------------------------------------------------
-function loadLayout() {
+// Settings live in this browser's localStorage (per device). Every read is wrapped
+// in try/catch because private browsing can block storage.
+function loadSaved(key, defaults) {
   try {
-    return { ...DEFAULT_LAYOUT, ...JSON.parse(localStorage.getItem(LAYOUT_KEY) || '{}') };
+    return { ...defaults, ...JSON.parse(localStorage.getItem(key) || '{}') };
   } catch {
-    return { ...DEFAULT_LAYOUT };
+    return { ...defaults };
   }
 }
+const loadLayout = () => loadSaved(LAYOUT_KEY, DEFAULT_LAYOUT);
+const loadRoll = () => loadSaved(ROLL_KEY, BROTHER_DEFAULT);
+
+function printerMode() {
+  try { return localStorage.getItem(PRINTER_KEY) === 'deskjet' ? 'deskjet' : 'brother'; } catch { return 'brother'; }
+}
+const printerName = () => (printerMode() === 'brother' ? 'Brother' : 'DeskJet');
 
 // Hand the PDF to the phone's print system. MUST run straight from a tap
 // (before any "await"), otherwise iPhone Safari blocks the share sheet / new tab.
@@ -211,7 +231,7 @@ function openPdf(blob, name) {
   const file = new File([blob], name, { type: 'application/pdf' });
   const isPhone = matchMedia('(pointer: coarse)').matches;
   if (isPhone && navigator.canShare?.({ files: [file] })) {
-    // iPhone: opens the share sheet -> choose "Print" -> pick the DeskJet.
+    // iPhone: opens the share sheet -> choose "Print" -> pick the printer.
     navigator.share({ files: [file], title: name }).catch(() => {});
     return;
   }
@@ -239,6 +259,36 @@ async function markPrinted(dishes) {
   }
 }
 
+// ---- Brother QL-810Wc: one label per PDF page; the printer cuts after each page ----
+function printLabels(dishes) {
+  if (state.busy || !dishes.length) return;
+  const names = dishes.map((d) => d.dish_name).join(', ');
+  // 1) Open the PDF immediately (synchronously, still inside the tap).
+  deliverPdf(buildRollPdf(dishes, loadRoll()), `labels-${dishes.map((d) => d.id).join('-').slice(0, 60)}.pdf`);
+  // 2) Then record what was printed.
+  saveLabelPrint(dishes, names);
+}
+
+async function saveLabelPrint(dishes, names) {
+  state.busy = true;
+  render();
+  try {
+    await markPrinted(dishes);
+    const count = dishes.length === 1 ? '1 label' : `${dishes.length} labels`;
+    showPrintMsg(`Sent ${count}: ${names}. In the share sheet choose Print, then the Brother.`);
+  } catch (err) {
+    console.error(err);
+    showPrintMsg(`The PDF opened, but saving the print status failed (${err.message}). Refresh and check the queue.`, 'error');
+  } finally {
+    state.busy = false;
+    await reload();
+  }
+}
+
+$('print-one-btn').addEventListener('click', () => printLabels(waitingQueue().slice(0, 1)));
+$('print-all-btn').addEventListener('click', () => printLabels(waitingQueue()));
+
+// ---- DeskJet backup: two 7" x 5" labels per Letter sheet ----
 /**
  * kind: 'pair'     -> next 2 dishes, top + bottom of a fresh sheet
  *       'fresh'    -> next 1 dish, top of a fresh sheet (bottom becomes the leftover)
@@ -331,6 +381,9 @@ function dishRow(d) {
     : 'No allergens declared';
   const actions = d.status === 'waiting'
     ? [
+        printerMode() === 'brother'
+          ? h('button', { type: 'button', className: 'primary', disabled: state.busy, onclick: () => printLabels([d]) }, 'Print')
+          : null,
         h('button', { type: 'button', onclick: () => updateDish(d.id, { priority: !d.priority }) },
           d.priority ? 'Un-prioritize' : 'Move to front'),
         h('button', { type: 'button', onclick: () => openEditor(d) }, 'Edit'),
@@ -416,6 +469,23 @@ function render() {
 
   $('waiting-count').textContent = n;
   document.title = n ? `(${n}) Potluck Print Queue` : 'Potluck Print Queue';
+
+  const roll = printerMode() === 'brother';
+  $('roll-controls').hidden = !roll;
+  $('sheet-controls').hidden = roll;
+  $('leftover-status').hidden = roll;
+  $('printer-line').textContent = roll
+    ? 'Printer: Brother QL-810Wc. Each label is cut separately.'
+    : 'Printer: DeskJet, 2 labels per sheet (backup mode).';
+
+  const oneBtn = $('print-one-btn');
+  oneBtn.hidden = n < 1;
+  if (n >= 1) oneBtn.textContent = `Print next: ${queue[0].dish_name}`;
+  const allBtn = $('print-all-btn');
+  allBtn.hidden = n < 2;
+  allBtn.textContent = `Print all ${n} waiting`;
+  oneBtn.disabled = allBtn.disabled = state.busy;
+
   $('leftover-status').textContent = sheet
     ? `Leftover sheet: ${freeSlot(sheet)} half is free`
     : 'No leftover half';
@@ -470,39 +540,74 @@ async function renderQr() {
 }
 
 // ---------------------------------------------------------------------
-// Calibration settings
+// Printer & label settings
 // ---------------------------------------------------------------------
 const LAYOUT_FIELDS = ['leftMargin', 'topMargin', 'gap', 'labelHeight', 'nudgeX', 'nudgeY'];
+const ROLL_FIELDS = ['labelLength', 'nudgeX', 'nudgeY'];
 
-function fillLayoutForm() {
-  const layout = loadLayout();
-  const f = $('layout-form');
-  for (const k of LAYOUT_FIELDS) f.elements[k].value = layout[k];
+function fillForm(form, fields, values) {
+  for (const k of fields) form.elements[k].value = values[k];
 }
 
-$('layout-form').addEventListener('submit', (e) => {
-  e.preventDefault();
-  const f = e.target;
-  const layout = {};
-  for (const k of LAYOUT_FIELDS) {
-    const v = Number.parseFloat(f.elements[k].value);
-    layout[k] = Number.isFinite(v) ? v : DEFAULT_LAYOUT[k];
+function fillLayoutForm() {
+  const mode = printerMode();
+  for (const r of document.querySelectorAll('input[name=printer]')) r.checked = r.value === mode;
+  $('roll-form').hidden = mode !== 'brother';
+  $('layout-form').hidden = mode !== 'deskjet';
+  fillForm($('roll-form'), ROLL_FIELDS, loadRoll());
+  fillForm($('layout-form'), LAYOUT_FIELDS, loadLayout());
+}
+
+// Reads numbers from a form, falling back to the default for blank/invalid boxes.
+function readNumbers(form, fields, defaults) {
+  const out = {};
+  for (const k of fields) {
+    const v = Number.parseFloat(form.elements[k].value);
+    out[k] = Number.isFinite(v) ? v : defaults[k];
   }
-  try { localStorage.setItem(LAYOUT_KEY, JSON.stringify(layout)); } catch { /* ignore */ }
+  return out;
+}
+
+function saveSetting(key, value) {
+  try { localStorage.setItem(key, typeof value === 'string' ? value : JSON.stringify(value)); } catch { /* ignore */ }
+}
+function clearSetting(key) {
+  try { localStorage.removeItem(key); } catch { /* ignore */ }
+}
+
+for (const r of document.querySelectorAll('input[name=printer]')) {
+  r.addEventListener('change', () => {
+    saveSetting(PRINTER_KEY, r.value);
+    fillLayoutForm();
+    render();
+    showPrintMsg(`Printer set to ${printerName()}.`);
+  });
+}
+
+$('roll-form').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const roll = readNumbers(e.target, ROLL_FIELDS, BROTHER_DEFAULT);
+  roll.labelLength = Math.min(8, Math.max(2, roll.labelLength));
+  saveSetting(ROLL_KEY, roll);
   fillLayoutForm();
   alert('Saved on this device.');
 });
+$('roll-reset-btn').addEventListener('click', () => { clearSetting(ROLL_KEY); fillLayoutForm(); });
+$('roll-test-btn').addEventListener('click', () => deliverPdf(buildRollTestPdf(loadRoll()), 'test-label.pdf'));
+$('roll-sample-btn').addEventListener('click', () => deliverPdf(buildRollPdf([SAMPLE_DISHES[1]], loadRoll()), 'sample-label.pdf'));
 
-$('layout-reset-btn').addEventListener('click', () => {
-  try { localStorage.removeItem(LAYOUT_KEY); } catch { /* ignore */ }
+$('layout-form').addEventListener('submit', (e) => {
+  e.preventDefault();
+  saveSetting(LAYOUT_KEY, readNumbers(e.target, LAYOUT_FIELDS, DEFAULT_LAYOUT));
   fillLayoutForm();
+  alert('Saved on this device.');
 });
-
+$('layout-reset-btn').addEventListener('click', () => { clearSetting(LAYOUT_KEY); fillLayoutForm(); });
 $('test-align-btn').addEventListener('click', () => deliverPdf(buildAlignmentPdf(loadLayout()), 'alignment-test.pdf'));
-$('test-sample-btn').addEventListener('click', () => deliverPdf(buildSheetPdf({
-  top: { dish_name: 'Sample: Mango Salsa', cook_name: 'Test', ingredients: 'mango, red onion, cilantro, lime, jalapeño, salt', allergens: [], diet_tags: ['vegan', 'spicy'] },
-  bottom: { dish_name: 'Sample: Chicken Biryani', cook_name: 'Test', ingredients: 'basmati rice, chicken, yogurt, ghee, onions, garlic, ginger, saffron, cashews, spices', allergens: ['milk', 'tree_nuts'], diet_tags: [] },
-}, loadLayout()), 'sample-labels.pdf'));
+$('test-sample-btn').addEventListener('click', () => deliverPdf(
+  buildSheetPdf({ top: SAMPLE_DISHES[0], bottom: SAMPLE_DISHES[1] }, loadLayout()),
+  'sample-labels.pdf',
+));
 
 // Keep the screen in sync when the login session changes (e.g. expires).
 supabase.auth.onAuthStateChange((event) => {

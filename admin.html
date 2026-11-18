@@ -41,8 +41,14 @@
             <div><span class="bigcount" id="waiting-count">0</span> <span class="muted">waiting</span></div>
             <div class="muted small" id="leftover-status"></div>
           </div>
-          <p></p>
-          <div class="row" style="flex-direction:column">
+          <p class="small muted" id="printer-line"></p>
+          <!-- Brother QL-810Wc: one label at a time (or all waiting, each cut separately) -->
+          <div class="row" style="flex-direction:column" id="roll-controls">
+            <button type="button" class="primary big" id="print-one-btn">Print next</button>
+            <button type="button" class="big" id="print-all-btn">Print all waiting</button>
+          </div>
+          <!-- DeskJet backup: two 7" x 5" labels per sheet -->
+          <div class="row" style="flex-direction:column" id="sheet-controls">
             <button type="button" class="primary big" id="print-pair-btn">Print next 2</button>
             <button type="button" class="primary big" id="print-leftover-btn">Print next 1 on leftover half</button>
             <button type="button" class="big" id="print-fresh-btn">Print next 1 on a fresh sheet</button>
@@ -88,11 +94,39 @@
 
         <section class="card">
           <details>
-            <summary>Label position (calibration)</summary>
-            <p class="small muted">Measure your label sheet in inches. Then print the alignment test on
-              plain paper and hold it over a label sheet against a window. Use "nudge" to shift everything.
-              Saved on this device only.</p>
+            <summary>Printer &amp; label settings</summary>
+            <fieldset>
+              <legend>Which printer?</legend>
+              <div class="chips">
+                <label><input type="radio" name="printer" value="brother" /> Brother QL-810Wc (62 mm roll)</label>
+                <label><input type="radio" name="printer" value="deskjet" /> DeskJet, 7"×5" sheets (backup)</label>
+              </div>
+            </fieldset>
+            <p class="small muted">Saved on this device only.</p>
+
+            <form id="roll-form">
+              <p class="small muted">Each label is 62 mm (2.44") wide. Print a test label: the dashed box must be
+                fully visible. If text is cut off on one side, nudge it the other way.</p>
+              <div class="grid2">
+                <label class="field">Label length (inches) <input type="number" step="0.1" min="2" max="8" name="labelLength" /></label>
+                <span></span>
+                <label class="field">Nudge right (+) / left (−) <input type="number" step="0.01" name="nudgeX" /></label>
+                <label class="field">Nudge down (+) / up (−) <input type="number" step="0.01" name="nudgeY" /></label>
+              </div>
+              <div class="row">
+                <button type="submit" class="primary">Save</button>
+                <button type="button" id="roll-reset-btn">Reset</button>
+              </div>
+              <p></p>
+              <div class="row">
+                <button type="button" id="roll-test-btn">Print test label</button>
+                <button type="button" id="roll-sample-btn">Print sample label</button>
+              </div>
+            </form>
+
             <form id="layout-form">
+              <p class="small muted">Measure your label sheet in inches. Then print the alignment test on
+                plain paper and hold it over a label sheet against a window. Use "nudge" to shift everything.</p>
               <div class="grid2">
                 <label class="field">Left margin <input type="number" step="0.01" name="leftMargin" /></label>
                 <label class="field">Top margin <input type="number" step="0.01" name="topMargin" /></label>

@@ -1,7 +1,10 @@
 // Makes sample PDFs in ./samples so you can check the label design without the app.
 // Run: npm run test:pdf
 import { mkdirSync, writeFileSync } from 'node:fs';
-import { buildSheetPdf, buildAlignmentPdf, DEFAULT_LAYOUT } from '../src/label-pdf.js';
+import {
+  buildSheetPdf, buildAlignmentPdf, DEFAULT_LAYOUT,
+  buildRollPdf, buildRollTestPdf, BROTHER_DEFAULT,
+} from '../src/label-pdf.js';
 
 const short = {
   dish_name: 'Mango Salsa',
@@ -31,6 +34,11 @@ const save = (name, doc) => {
   writeFileSync(`samples/${name}`, Buffer.from(doc.output('arraybuffer')));
   console.log(`wrote samples/${name}`);
 };
+// Brother QL-810Wc (main printer): one label per page
+save('brother-labels.pdf', buildRollPdf([short, long]));
+save('brother-test.pdf', buildRollTestPdf(BROTHER_DEFAULT));
+
+// DeskJet backup: two 7" x 5" labels per Letter sheet
 save('pair.pdf', buildSheetPdf({ top: short, bottom: long }));
 save('single-bottom.pdf', buildSheetPdf({ bottom: short }));
 save('alignment.pdf', buildAlignmentPdf(DEFAULT_LAYOUT));

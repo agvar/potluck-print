@@ -111,19 +111,21 @@ button:disabled { opacity: 0.55; cursor: default; }
 .msg.ok { background: var(--ok-bg); color: var(--ok-text); }
 [hidden] { display: none !important; }
 
-/* Label preview (approximates the printed 7" x 5" label) */
+/* Label preview (approximates the printed 62 mm x 4" Brother label) */
 .preview {
-  aspect-ratio: 7 / 5;
+  aspect-ratio: 62 / 101.6;
+  width: min(100%, 260px);
+  margin: 0 auto;
   background: #fff;
   color: #111;
   border: 1px dashed #b9b0a3;
-  border-radius: 8px;
-  padding: 4.3% 4.3%;
+  border-radius: 6px;
+  padding: 5.3%;
   overflow: hidden;
-  font-size: clamp(9px, 2.4vw, 14px);
-  display: flex; flex-direction: column; gap: 0.5em;
+  font-size: 12px;
+  display: flex; flex-direction: column; gap: 0.45em;
 }
-.preview .p-name { font-weight: 800; font-size: 2.1em; line-height: 1.1; word-break: break-word; }
+.preview .p-name { font-weight: 800; font-size: 1.8em; line-height: 1.1; word-break: break-word; }
 .preview .p-cook { color: #444; }
 .preview .p-allergens { font-weight: 800; border: 2px solid #111; padding: 0.3em 0.5em; }
 .preview .p-tags { font-weight: 600; }
