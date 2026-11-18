@@ -193,9 +193,7 @@ begin
                  'title',   'New dish: ' || new.dish_name,
                  'message', case when trim(new.cook_name) = '' then ''
                                  else 'by ' || new.cook_name || ' - ' end
-                            || waiting || ' waiting'
-                            || case when waiting >= 2 then ' (ready to print a pair)'
-                                    else ' (wait for a pair or print 1 now)' end,
+                            || waiting || ' waiting to print',
                  'tags',    jsonb_build_array('stew'),
                  'click',   cfg.admin_url
                )),
