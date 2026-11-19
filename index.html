@@ -27,6 +27,31 @@
                  placeholder="e.g. Priya" enterkeyhint="next" />
         </label>
 
+        <div class="suggest" id="suggest-box">
+          <div class="suggest-head">✨ Don't want to type it all?</div>
+          <p class="small muted">We can guess the ingredients from the dish name, or from a photo. You check and fix them.</p>
+          <div class="row">
+            <label class="btn" id="photo-btn">📷 Add photo
+              <input type="file" accept="image/*" id="photo-input" hidden />
+            </label>
+            <button type="button" class="primary" id="suggest-btn">✨ Suggest ingredients</button>
+          </div>
+          <div class="photo-preview" id="photo-preview" hidden>
+            <img id="photo-thumb" alt="Your dish photo" />
+            <button type="button" id="photo-remove">Remove photo</button>
+          </div>
+          <div class="msg error" id="suggest-error" role="alert" hidden></div>
+          <div id="suggest-result" hidden>
+            <p class="small" id="suggest-note"></p>
+            <button type="button" id="suggest-use" hidden>Replace my list with the suggestions</button>
+            <div id="suggest-maybe" hidden>
+              <p class="small"><strong>Might contain:</strong> tap each one that's really in your dish.</p>
+              <div class="chips" id="suggest-chips"></div>
+            </div>
+            <p class="small muted">AI guesses can be wrong and can't see hidden things like butter or ground nuts. Please check.</p>
+          </div>
+        </div>
+
         <label class="field">
           Ingredients <span class="counter" data-for="ingredients"></span>
           <span class="hint">Separate with commas or put one per line. Tip: tap the 🎤 on your keyboard to speak them.</span>

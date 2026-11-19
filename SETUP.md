@@ -180,6 +180,38 @@ Guests don't need any of these. They use their own mobile data.
 
 ---
 
+## Part 7: AI "Suggest ingredients" button (optional), ~10 min
+
+**Why:** guests type the dish name (and can add a photo), tap **✨ Suggest ingredients**, and
+get a draft list to fix instead of typing it all. The AI only *suggests*. Allergens it suspects
+appear as "Dairy?" buttons the guest must tap, so nothing is ticked without a human.
+
+1. **Database limits:** re-run [`supabase/setup.sql`](supabase/setup.sql) (section 7 adds them).
+   Each phone gets 8 suggestions per 10 minutes and everyone together gets 300 a day. Without
+   this step the button just says "Suggestions aren't available".
+2. **API key:** console.anthropic.com → sign up → **Billing** (add about $5 credit) →
+   **Limits** → set a **monthly spend limit** (e.g. $10) → **API Keys** → *Create key*.
+3. **Local:** add to `.env.local` (no `VITE_` prefix, which keeps it off the web page):
+   ```
+   ANTHROPIC_API_KEY=sk-ant-...
+   AI_MODEL=claude-haiku-5-5
+   ```
+   Restart `npm run dev`, then try a few dishes on the guest page.
+4. **Vercel:** Project → **Settings → Environment Variables** → add the same two → **Redeploy**.
+
+**Switching models or providers** is a settings change, not a code change:
+
+| Want | Set |
+|---|---|
+| Claude Haiku 5.5 (fast, about 0.05¢ a scan) | `AI_MODEL=claude-haiku-5-5` |
+| Claude Opus 5.5 (more careful, about 1–2¢ a scan) | `AI_MODEL=claude-opus-5-5` |
+| Kimi, or any OpenAI-style API | `AI_PROVIDER=openai-compatible`, `AI_BASE_URL=https://api.moonshot.ai/v1`, `AI_API_KEY=...`, `AI_MODEL=` a model that accepts images |
+
+On Vercel, redeploy after changing a variable. **Turn the button off** anytime:
+`update private.app_config set ai_enabled = false where id = 1;`
+
+---
+
 ## Party-day checklist
 
 - [ ] Brother: on, on the network, fresh DK-2205 roll loaded (plus a spare); admin set to **Brother**

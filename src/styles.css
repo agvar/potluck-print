@@ -160,3 +160,15 @@ dialog::backdrop { background: rgb(0 0 0 / 0.45); }
   body.printing-summary #summary-card { border: 0; }
   body.printing-summary #summary-card button { display: none; }
 }
+
+/* Guest page: AI "Suggest ingredients" box */
+.suggest { border: 1px dashed var(--line); border-radius: 12px; padding: 12px; margin-bottom: 14px; }
+.suggest-head { font-weight: 600; }
+.suggest p { margin: 4px 0 10px; }
+.photo-preview { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
+.photo-preview img { width: 72px; height: 72px; object-fit: cover; border-radius: 8px; }
+.photo-preview button { min-height: 38px; padding: 6px 12px; font-size: 0.9rem; }
+#suggest-result { margin-top: 10px; }
+#suggest-use { width: 100%; margin-bottom: 10px; }
+.chips button.maybe { min-height: 38px; padding: 6px 12px; border-radius: 999px; font-size: 0.95rem; border-style: dashed; }
+.chips button.maybe.yes { border-style: solid; border-color: var(--accent); }

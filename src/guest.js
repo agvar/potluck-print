@@ -134,10 +134,158 @@ form.addEventListener('submit', async (event) => {
   clearDraft();
   form.reset();
   form.elements.cook_name.value = dish.cook_name; // handy if they bring a second dish
+  clearPhoto();
+  clearSuggestion();
   renderPreview();
   form.hidden = true;
   doneCard.hidden = false;
   window.scrollTo({ top: 0, behavior: 'smooth' });
+});
+
+// ---- ✨ Suggest ingredients (AI). The AI only proposes; the cook decides. ----
+const photoInput = document.getElementById('photo-input');
+const photoPreview = document.getElementById('photo-preview');
+const photoThumb = document.getElementById('photo-thumb');
+const suggestBtn = document.getElementById('suggest-btn');
+const suggestError = document.getElementById('suggest-error');
+const suggestResult = document.getElementById('suggest-result');
+const suggestNote = document.getElementById('suggest-note');
+const suggestUse = document.getElementById('suggest-use');
+const suggestMaybe = document.getElementById('suggest-maybe');
+const suggestChips = document.getElementById('suggest-chips');
+let photoDataUrl = null;
+let suggestedList = '';
+
+function showSuggestError(text) {
+  suggestError.textContent = text;
+  suggestError.hidden = !text;
+}
+
+// Phone photos are 3-12 MB. Shrink to 1024 px JPEG (~150 KB) before sending:
+// faster on party Wi-Fi, cheaper for the AI, and plenty to recognise a dish.
+async function shrinkPhoto(file, maxSide = 1024) {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = new Image();
+    img.src = url;
+    await img.decode();
+    const scale = Math.min(1, maxSide / Math.max(img.naturalWidth, img.naturalHeight));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.round(img.naturalWidth * scale);
+    canvas.height = Math.round(img.naturalHeight * scale);
+    canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+    return canvas.toDataURL('image/jpeg', 0.8);
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+function clearPhoto() {
+  photoDataUrl = null;
+  photoInput.value = '';
+  photoPreview.hidden = true;
+  photoThumb.removeAttribute('src');
+}
+
+function clearSuggestion() {
+  suggestResult.hidden = true;
+  suggestChips.replaceChildren();
+  suggestedList = '';
+  showSuggestError('');
+}
+
+photoInput.addEventListener('change', async () => {
+  const file = photoInput.files?.[0];
+  if (!file) return;
+  showSuggestError('');
+  try {
+    photoDataUrl = await shrinkPhoto(file);
+    photoThumb.src = photoDataUrl;
+    photoPreview.hidden = false;
+  } catch (error) {
+    console.error(error);
+    clearPhoto();
+    showSuggestError('Couldn\'t read that photo. Try another one.');
+  }
+});
+document.getElementById('photo-remove').addEventListener('click', clearPhoto);
+
+// One "Dairy?" button per allergen / diet tag the AI thinks might apply.
+// Tapping it ticks the real checkbox below, so a person always makes the final call.
+function renderMaybeChips(data) {
+  const items = [
+    ...data.possible_allergens.map((key) => ({ name: 'allergens', key, label: labelFor(ALLERGENS, key) })),
+    ...data.possible_diet_tags.map((key) => ({ name: 'diet_tags', key, label: labelFor(DIET_TAGS, key) })),
+  ];
+  suggestChips.replaceChildren(...items.map((item) => {
+    const checkbox = form.querySelector(`input[name="${item.name}"][value="${item.key}"]`);
+    const button = el('button', 'maybe');
+    button.type = 'button';
+    const paint = () => {
+      button.classList.toggle('yes', checkbox.checked);
+      button.textContent = checkbox.checked ? `✓ ${item.label}` : `${item.label}?`;
+    };
+    paint();
+    button.addEventListener('click', () => {
+      checkbox.checked = !checkbox.checked;
+      paint();
+      form.dispatchEvent(new Event('input')); // refresh preview + draft
+    });
+    return button;
+  }));
+  suggestMaybe.hidden = items.length === 0;
+}
+
+suggestBtn.addEventListener('click', async () => {
+  const dishName = form.elements.dish_name.value.trim();
+  clearSuggestion();
+  if (!dishName && !photoDataUrl) {
+    showSuggestError('Type the dish name or add a photo first.');
+    return form.elements.dish_name.focus();
+  }
+
+  suggestBtn.disabled = true;
+  suggestBtn.textContent = 'Thinking…';
+  let data;
+  try {
+    const res = await fetch('/api/suggest', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ dish_name: dishName, image: photoDataUrl }),
+    });
+    data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || 'Suggestions aren\'t available right now.');
+  } catch (error) {
+    // fetch() throws a TypeError when the phone can't reach the server at all.
+    showSuggestError(error instanceof TypeError ? 'No connection. Please type the ingredients.' : error.message);
+    return;
+  } finally {
+    suggestBtn.disabled = false;
+    suggestBtn.textContent = '✨ Suggest ingredients';
+  }
+
+  if (!dishName && data.dish_guess) form.elements.dish_name.value = data.dish_guess.slice(0, LIMITS.dishName);
+  suggestedList = data.ingredients.join(', ');
+  const box = form.elements.ingredients;
+  const hasOwnList = box.value.trim() !== '';
+  if (suggestedList && !hasOwnList) box.value = suggestedList;
+
+  suggestNote.textContent = [
+    data.ingredients.length
+      ? (hasOwnList ? 'You already typed a list, so we kept it.' : 'We filled in the ingredients below. Please check them and fix anything that\'s wrong.')
+      : 'No ingredients suggested.',
+    data.note,
+  ].filter(Boolean).join(' ');
+  suggestUse.hidden = !(hasOwnList && suggestedList);
+  renderMaybeChips(data);
+  suggestResult.hidden = false;
+  form.dispatchEvent(new Event('input'));
+});
+
+suggestUse.addEventListener('click', () => {
+  form.elements.ingredients.value = suggestedList;
+  suggestUse.hidden = true;
+  form.dispatchEvent(new Event('input'));
 });
 
 document.getElementById('another-btn').addEventListener('click', () => {

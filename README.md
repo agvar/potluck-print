@@ -15,12 +15,17 @@ Guest phone (mobile data)                         Your iPhone (same Wi-Fi as pri
                               └─► ntfy ─► 🔔          └─► Share → Print → Brother (or DeskJet)
 ```
 
-- **No server code of our own.** The site is static files on Vercel. Supabase is the database,
-  and its security rules (Row Level Security) decide who can do what.
+- **Almost no server code.** The site is static files on Vercel. Supabase is the database,
+  and its security rules (Row Level Security) decide who can do what. The one exception is
+  `api/suggest.js`, which keeps the AI key secret (see below).
 - **Guests can only add dishes.** They can't read, change or delete anything.
 - **Only admins** (users listed in the `admins` table) can see the queue and print.
 - **Notifications** are sent by the database itself (a trigger calls ntfy.sh), so the secret
   channel name never reaches a browser.
+- **✨ Suggest ingredients** sends the dish name (and an optional, shrunken photo) to
+  `/api/suggest`, which asks an AI for likely ingredients and allergens. Photos aren't stored.
+  The provider and model are settings (`AI_PROVIDER`, `AI_MODEL`), so you can switch between
+  Claude models or to Kimi without code changes. See SETUP.md Part 7.
 
 ## Project files
 
@@ -33,6 +38,9 @@ Guest phone (mobile data)                         Your iPhone (same Wi-Fi as pri
 | `src/supabase.js` | Database connection |
 | `src/styles.css` | Shared look (phone-first, light/dark) |
 | `supabase/setup.sql` | Tables, security rules, live updates, notification trigger |
+| `api/suggest.js` | Vercel function: checks limits, calls the AI, returns suggestions |
+| `server/ai/` | `index.js` picks the provider; `shared.js` holds the prompt + answer clean-up; one file per provider |
+| `server/rate-limit.js` | Asks the database whether this phone may scan again |
 | `scripts/sample-pdf.js` | `npm run test:pdf` writes sample PDFs to `samples/` |
 
 ## Commands
@@ -52,5 +60,5 @@ npm run test:pdf   # sample label PDFs in samples/
 - **v1** (this): typed entry, admin-page printing via AirPrint
 - v1.1: scan barcodes on store-bought products (Open Food Facts)
 - v2: speak ingredients
-- v3: photo of the dish → AI suggests ingredients
+- v3: photo of the dish → AI suggests ingredients (✨ Suggest ingredients, built)
 - Later: Raspberry Pi prints automatically from the same queue

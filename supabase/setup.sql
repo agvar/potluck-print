@@ -212,6 +212,66 @@ create trigger dishes_notify
   for each row execute function private.notify_new_dish();
 
 
+-- ---------------------------------------------------------------------
+-- 7. AI SUGGESTIONS: limits for the "Suggest ingredients" button.
+--    Each suggestion costs a little money, and the button is public, so:
+--      * each phone may ask 8 times per 10 minutes
+--      * everyone together may ask ai_daily_limit times per day
+--      * ai_enabled = false turns the button off instantly
+--    The server function (api/suggest.js) asks ai_scan_allowed() before
+--    every AI call. Phones are stored as a hash, never as an IP address.
+-- ---------------------------------------------------------------------
+alter table private.app_config add column if not exists ai_enabled     boolean not null default true;
+alter table private.app_config add column if not exists ai_daily_limit int     not null default 300;
+
+create table if not exists private.ai_scans (
+  id          bigint generated always as identity primary key,
+  created_at  timestamptz not null default now(),
+  client      text not null
+);
+create index if not exists ai_scans_time_idx on private.ai_scans (created_at);
+
+-- Returns 'ok' (and counts the scan), or why not: 'off', 'slow_down', 'daily_limit'.
+create or replace function public.ai_scan_allowed(p_client text)
+returns text
+language plpgsql
+volatile
+security definer
+set search_path = ''
+as $$
+declare
+  cfg record;
+begin
+  select ai_enabled, ai_daily_limit into cfg from private.app_config where id = 1;
+  if not coalesce(cfg.ai_enabled, false) then
+    return 'off';
+  end if;
+  if p_client is null or char_length(p_client) not between 8 and 64 then
+    return 'off';
+  end if;
+
+  -- Only one request at a time runs the checks below, so the counts are exact.
+  perform pg_advisory_xact_lock(hashtext('ai_scan_allowed'));
+
+  if (select count(*) from private.ai_scans
+      where created_at > now() - interval '1 day') >= cfg.ai_daily_limit then
+    return 'daily_limit';
+  end if;
+  if (select count(*) from private.ai_scans
+      where client = p_client and created_at > now() - interval '10 minutes') >= 8 then
+    return 'slow_down';
+  end if;
+
+  insert into private.ai_scans (client) values (p_client);
+  delete from private.ai_scans where created_at < now() - interval '2 days';  -- tidy up
+  return 'ok';
+end;
+$$;
+
+revoke execute on function public.ai_scan_allowed(text) from public;
+grant execute on function public.ai_scan_allowed(text) to anon, authenticated;
+
+
 -- =====================================================================
 -- AFTER running the above, do these two small steps (see SETUP.md):
 --
@@ -229,4 +289,9 @@ create trigger dishes_notify
 --      set ntfy_topic = 'potluck-REPLACE-WITH-RANDOM',
 --          admin_url  = 'https://YOUR-APP.vercel.app/admin'
 --      where id = 1;
+--
+-- C) Optional, AI suggestions on/off or a different daily cap:
+--
+--      update private.app_config set ai_enabled = false where id = 1;
+--      update private.app_config set ai_daily_limit = 500 where id = 1;
 -- =====================================================================
