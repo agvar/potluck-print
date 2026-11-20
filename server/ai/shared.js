@@ -11,6 +11,8 @@ export const SYSTEM_PROMPT = `You help guests at a potluck party label the dish 
 You get the dish name and sometimes a photo. Suggest the ingredients the dish most likely contains,
 so the cook can correct the list instead of typing it from scratch.
 
+- dish_guess: the dish's common name in 1 to 4 words, like a menu title ("Chicken Biryani",
+  "Chocolate Chip Cookies"). No descriptions, adjectives or "with ..." details.
 - List the ingredients a typical home recipe uses, most important first, at most 20.
   Use short, plain names a guest would recognise ("butter", "garlic", "basmati rice").
 - Include hidden ingredients that matter for allergies, such as butter or ghee in sauces,
@@ -30,7 +32,7 @@ so the cook can correct the list instead of typing it from scratch.
 export const SUGGESTION_SCHEMA = {
   type: 'object',
   properties: {
-    dish_guess: { type: 'string', description: 'What the dish appears to be' },
+    dish_guess: { type: 'string', description: 'Common name of the dish, 1 to 4 words' },
     ingredients: { type: 'array', items: { type: 'string' } },
     possible_allergens: { type: 'array', items: { type: 'string', enum: ALLERGEN_KEYS } },
     possible_diet_tags: { type: 'array', items: { type: 'string', enum: DIET_KEYS } },
@@ -66,12 +68,29 @@ export function cleanSuggestion(raw) {
   const unique = (list, allowed) => [...new Set(strings(list).filter((k) => allowed.includes(k)))];
 
   return {
-    dish_guess: typeof obj.dish_guess === 'string' ? obj.dish_guess.trim().slice(0, 80) : '',
+    dish_guess: shortDishName(obj.dish_guess),
     ingredients,
     possible_allergens: unique(obj.possible_allergens, ALLERGEN_KEYS),
     possible_diet_tags: unique(obj.possible_diet_tags, DIET_KEYS),
     note: typeof obj.note === 'string' ? obj.note.trim().slice(0, 200) : '',
   };
+}
+
+// Safety net in case the model ignores "1 to 4 words" (every provider, every model):
+// "Creamy Chicken Tikka Masala with Basmati Rice" -> "Creamy Chicken Tikka Masala".
+// Cuts at the first " with / served / in a ..." detail, keeps at most 4 words,
+// and drops a dangling "and"/"of" left at the end.
+const MAX_NAME_WORDS = 4;
+export function shortDishName(text) {
+  if (typeof text !== 'string') return '';
+  const main = text
+    .replace(/\s*\([^)]*\)?/g, ' ') // "(beef and ricotta)"
+    .replace(/[\s,;:(–—-]+(with|served|topped|in a|on a|and served)\b.*$/i, '')
+    .replace(/[.!]+$/, '')
+    .trim();
+  const words = main.split(/\s+/).filter(Boolean).slice(0, MAX_NAME_WORDS);
+  while (words.length > 1 && /^(and|&|of|with|in|on|the|a)$/i.test(words.at(-1))) words.pop();
+  return words.join(' ').slice(0, 40);
 }
 
 // Thrown by providers for problems the guest should hear about in plain words.
