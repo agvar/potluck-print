@@ -42,13 +42,8 @@
           </div>
           <div class="msg error" id="suggest-error" role="alert" hidden></div>
           <div id="suggest-result" hidden>
-            <p class="small" id="suggest-note"></p>
+            <p class="small suggest-ok" id="suggest-note"></p>
             <button type="button" id="suggest-use" hidden>Replace my list with the suggestions</button>
-            <div id="suggest-maybe" hidden>
-              <p class="small"><strong>Might contain:</strong> tap each one that's really in your dish.</p>
-              <div class="chips" id="suggest-chips"></div>
-            </div>
-            <p class="small muted">AI guesses can be wrong and can't see hidden things like butter or ground nuts. Please check.</p>
           </div>
         </div>
 
@@ -65,6 +60,7 @@
 
         <fieldset>
           <legend>Contains any of these allergens?</legend>
+          <p class="small ai-ticked-note" id="ai-ticked-note" hidden></p>
           <div class="chips" id="allergen-chips"></div>
         </fieldset>
 
@@ -86,7 +82,10 @@
         <h2>✅ Thanks! Your dish is in the print queue.</h2>
         <p>Your label will be printed shortly. Pick it up at the print table.</p>
         <button type="button" class="big" id="another-btn">Add another dish</button>
+        <p class="small muted credit-thanks">Potluck Print was made by <a class="credit-link"></a>. Say hi at the table!</p>
       </section>
+
+      <footer class="credit-footer small muted">Made by <a class="credit-link"></a></footer>
     </main>
     <script type="module" src="/src/guest.js"></script>
   </body>

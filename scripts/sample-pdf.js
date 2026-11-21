@@ -44,3 +44,9 @@ save('brother-test.pdf', buildRollTestPdf(BROTHER_DEFAULT));
 save('pair.pdf', buildSheetPdf({ top: short, bottom: long }));
 save('single-bottom.pdf', buildSheetPdf({ bottom: short }));
 save('alignment.pdf', buildAlignmentPdf(DEFAULT_LAYOUT));
+
+// Table sign with the guest QR code (2 per Letter page)
+const { default: QRCode } = await import('qrcode');
+const { buildQrSignPdf } = await import('../src/sign-pdf.js');
+const signUrl = 'https://potluck-print.vercel.app/';
+save('qr-sign.pdf', buildQrSignPdf(await QRCode.toDataURL(signUrl, { width: 1024, margin: 1, errorCorrectionLevel: 'M' }), signUrl));

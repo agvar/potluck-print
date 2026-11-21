@@ -170,8 +170,11 @@ dialog::backdrop { background: rgb(0 0 0 / 0.45); }
 .photo-preview button { min-height: 38px; padding: 6px 12px; font-size: 0.9rem; }
 #suggest-result { margin-top: 10px; }
 #suggest-use { width: 100%; margin-bottom: 10px; }
-.chips button.maybe { min-height: 38px; padding: 6px 12px; border-radius: 999px; font-size: 0.95rem; border-style: dashed; }
-.chips button.maybe.yes { border-style: solid; border-color: var(--accent); }
+.suggest-ok { margin: 0 0 8px; font-weight: 600; }
+/* Boxes the AI ticked show a ✨ until the guest taps them. */
+.chips label.ai-ticked { border-style: dashed; }
+.chips label.ai-ticked::after { content: "✨"; font-size: 0.85em; }
+.ai-ticked-note { margin: -2px 0 8px; color: var(--accent); font-weight: 600; }
 
 /* Guest page: ingredient chips with a × to remove one */
 .ing-list { margin: -6px 0 14px; }
@@ -188,3 +191,9 @@ dialog::backdrop { background: rgb(0 0 0 / 0.45); }
   color: var(--muted); font-size: 1.2rem; line-height: 1;
 }
 .ing-chip button:active { background: var(--line); }
+
+/* "Made by" credit: small and quiet */
+.credit-thanks { margin: 16px 0 0; text-align: center; }
+.credit-footer { text-align: center; margin-top: 8px; }
+.credit-thanks a, .credit-footer a { color: inherit; }
+#done:not([hidden]) ~ .credit-footer { display: none; } /* the thank-you card has its own credit */

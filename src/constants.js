@@ -13,14 +13,17 @@ export const ALLERGENS = [
   { key: 'shellfish', label: 'Shellfish' },
 ];
 
+// warning: true = it warns ("contains pork"), so the AI may tick it for the cook to check.
+// The rest are promises ("vegan", "gluten-free"): only the cook may tick those, because a
+// wrong tick tells someone with an allergy or a strict diet that the dish is safe.
 export const DIET_TAGS = [
   { key: 'vegetarian', label: 'Vegetarian' },
   { key: 'vegan', label: 'Vegan' },
   { key: 'gluten_free', label: 'Gluten-free' },
   { key: 'dairy_free', label: 'Dairy-free' },
-  { key: 'spicy', label: 'Spicy' },
-  { key: 'contains_pork', label: 'Contains pork' },
-  { key: 'contains_beef', label: 'Contains beef' },
+  { key: 'spicy', label: 'Spicy', warning: true },
+  { key: 'contains_pork', label: 'Contains pork', warning: true },
+  { key: 'contains_beef', label: 'Contains beef', warning: true },
 ];
 
 // Must match the CHECK constraints in supabase/setup.sql.
@@ -44,3 +47,9 @@ export function splitIngredients(text) {
 export function ingredientsAsLine(text) {
   return splitIngredients(text).join(', ');
 }
+
+// Who made the app: shown small on the guest page footer and the thank-you screen.
+export const CREDIT = {
+  name: 'Ajeeb George',
+  url: 'https://github.com/agvar',
+};

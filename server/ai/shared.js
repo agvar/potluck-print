@@ -5,7 +5,8 @@
 import { ALLERGENS, DIET_TAGS, LIMITS } from '../../src/constants.js';
 
 const ALLERGEN_KEYS = ALLERGENS.map((a) => a.key);
-const DIET_KEYS = DIET_TAGS.map((d) => d.key);
+// Only warning tags (spicy, contains pork/beef). The AI never suggests "vegan" or "gluten-free".
+const DIET_KEYS = DIET_TAGS.filter((d) => d.warning).map((d) => d.key);
 
 export const SYSTEM_PROMPT = `You help guests at a potluck party label the dish they brought.
 You get the dish name and sometimes a photo. Suggest the ingredients the dish most likely contains,
@@ -18,14 +19,15 @@ so the cook can correct the list instead of typing it from scratch.
 - Include hidden ingredients that matter for allergies, such as butter or ghee in sauces,
   ground nuts in curry bases, fish sauce, eggs in baked goods, flour used as a thickener,
   and soy sauce in marinades.
-- possible_allergens: every allergen a typical version of this dish could contain, even if unsure.
-  Missing an allergen is worse than listing one that turns out not to be there.
+- possible_allergens: every allergen a typical version of this dish usually or often contains.
+  These are pre-ticked for the cook to untick, so when in doubt include it: a missed allergen is
+  worse than an extra one. Don't add allergens only a rare variation would have.
   The keys mean: milk = any dairy, eggs, peanuts, tree_nuts, wheat = gluten (wheat, barley, rye),
   fish, shellfish.
-- possible_diet_tags: only tags that fit a typical version of the dish (for example "vegetarian"
-  only when it usually has no meat or fish; "contains_pork" when it usually has pork).
-- note: one short, friendly sentence for the cook, such as what you assumed or what to double-check.
-  If the name and photo don't look like food, return empty lists and say so in the note.`;
+- possible_diet_tags: "spicy" when the dish is usually noticeably hot. "contains_pork" or
+  "contains_beef" only when the name or photo clearly shows that meat (pork chops, ham, bacon,
+  beef stew); never guess them for dishes made with other meats, like chicken biryani.
+- If the name and photo don't look like food, return an empty dish_guess and empty lists.`;
 
 // The exact shape of the answer. Providers that support it (Claude) enforce it;
 // others are told about it and checked by cleanSuggestion() below.
@@ -36,9 +38,8 @@ export const SUGGESTION_SCHEMA = {
     ingredients: { type: 'array', items: { type: 'string' } },
     possible_allergens: { type: 'array', items: { type: 'string', enum: ALLERGEN_KEYS } },
     possible_diet_tags: { type: 'array', items: { type: 'string', enum: DIET_KEYS } },
-    note: { type: 'string' },
   },
-  required: ['dish_guess', 'ingredients', 'possible_allergens', 'possible_diet_tags', 'note'],
+  required: ['dish_guess', 'ingredients', 'possible_allergens', 'possible_diet_tags'],
   additionalProperties: false,
 };
 
@@ -72,7 +73,6 @@ export function cleanSuggestion(raw) {
     ingredients,
     possible_allergens: unique(obj.possible_allergens, ALLERGEN_KEYS),
     possible_diet_tags: unique(obj.possible_diet_tags, DIET_KEYS),
-    note: typeof obj.note === 'string' ? obj.note.trim().slice(0, 200) : '',
   };
 }
 

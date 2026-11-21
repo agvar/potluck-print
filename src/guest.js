@@ -1,7 +1,7 @@
 // Guest page: fill in the dish, preview the label, submit it to the print queue.
 import './styles.css';
 import { supabase, isConfigured, showConfigError } from './supabase.js';
-import { ALLERGENS, DIET_TAGS, LIMITS, labelFor, ingredientsAsLine, splitIngredients } from './constants.js';
+import { ALLERGENS, DIET_TAGS, LIMITS, CREDIT, labelFor, ingredientsAsLine, splitIngredients } from './constants.js';
 
 if (!isConfigured) {
   showConfigError();
@@ -168,7 +168,7 @@ form.addEventListener('submit', async (event) => {
   form.reset();
   form.elements.cook_name.value = dish.cook_name; // handy if they bring a second dish
   clearPhoto();
-  clearSuggestion();
+  clearSuggestion(); // also removes the ✨ marks
   renderPreview();
   renderIngredientChips();
   form.hidden = true;
@@ -185,8 +185,7 @@ const suggestError = document.getElementById('suggest-error');
 const suggestResult = document.getElementById('suggest-result');
 const suggestNote = document.getElementById('suggest-note');
 const suggestUse = document.getElementById('suggest-use');
-const suggestMaybe = document.getElementById('suggest-maybe');
-const suggestChips = document.getElementById('suggest-chips');
+const aiTickedNote = document.getElementById('ai-ticked-note');
 let photoDataUrl = null;
 let suggestedList = '';
 
@@ -221,10 +220,15 @@ function clearPhoto() {
   photoThumb.removeAttribute('src');
 }
 
+function clearAiTicks() {
+  for (const label of form.querySelectorAll('label.ai-ticked')) label.classList.remove('ai-ticked');
+  aiTickedNote.hidden = true;
+}
+
 function clearSuggestion() {
   suggestResult.hidden = true;
-  suggestChips.replaceChildren();
   suggestedList = '';
+  clearAiTicks();
   showSuggestError('');
 }
 
@@ -244,31 +248,33 @@ photoInput.addEventListener('change', async () => {
 });
 document.getElementById('photo-remove').addEventListener('click', clearPhoto);
 
-// One "Dairy?" button per allergen / diet tag the AI thinks might apply.
-// Tapping it ticks the real checkbox below, so a person always makes the final call.
-function renderMaybeChips(data) {
-  const items = [
-    ...data.possible_allergens.map((key) => ({ name: 'allergens', key, label: labelFor(ALLERGENS, key) })),
-    ...data.possible_diet_tags.map((key) => ({ name: 'diet_tags', key, label: labelFor(DIET_TAGS, key) })),
+// Tick the allergens and warning tags (spicy, contains pork/beef) the AI suggested, and mark
+// them with ✨ so the guest can see which ticks came from the AI. A wrong tick only over-warns;
+// an untapped "Dairy?" question would have left a real allergen off the label.
+// Promise tags (vegan, gluten-free, ...) are never ticked here: the server doesn't send them.
+function applyAiTicks(data, source) {
+  const ticks = [
+    ...data.possible_allergens.map((key) => ['allergens', key]),
+    ...data.possible_diet_tags.map((key) => ['diet_tags', key]),
   ];
-  suggestChips.replaceChildren(...items.map((item) => {
-    const checkbox = form.querySelector(`input[name="${item.name}"][value="${item.key}"]`);
-    const button = el('button', 'maybe');
-    button.type = 'button';
-    const paint = () => {
-      button.classList.toggle('yes', checkbox.checked);
-      button.textContent = checkbox.checked ? `✓ ${item.label}` : `${item.label}?`;
-    };
-    paint();
-    button.addEventListener('click', () => {
-      checkbox.checked = !checkbox.checked;
-      paint();
-      form.dispatchEvent(new Event('input')); // refresh preview + draft
-    });
-    return button;
-  }));
-  suggestMaybe.hidden = items.length === 0;
+  let count = 0;
+  for (const [name, key] of ticks) {
+    const checkbox = form.querySelector(`input[name="${name}"][value="${CSS.escape(key)}"]`);
+    if (!checkbox || checkbox.checked) continue; // already ticked by the guest: leave it alone
+    checkbox.checked = true;
+    checkbox.closest('label').classList.add('ai-ticked');
+    count += 1;
+  }
+  aiTickedNote.textContent = `✨ We ticked ${count === 1 ? 'a box' : 'boxes'} below from your ${source}. Untick any that are wrong.`;
+  aiTickedNote.hidden = count === 0;
 }
+
+// Once the guest taps a box the AI ticked, it's their decision: drop the ✨.
+form.addEventListener('change', (event) => {
+  const label = event.target.closest?.('label.ai-ticked');
+  if (label) label.classList.remove('ai-ticked');
+  if (!form.querySelector('label.ai-ticked')) aiTickedNote.hidden = true;
+});
 
 suggestBtn.addEventListener('click', async () => {
   const dishName = form.elements.dish_name.value.trim();
@@ -298,21 +304,29 @@ suggestBtn.addEventListener('click', async () => {
     suggestBtn.textContent = '✨ Suggest ingredients';
   }
 
-  if (!dishName && data.dish_guess) form.elements.dish_name.value = data.dish_guess.slice(0, LIMITS.dishName);
+  const source = photoDataUrl ? 'photo' : 'dish name';
+  if (!data.ingredients.length) {
+    showSuggestError(`Couldn't recognise a dish from that ${source}. Please type the ingredients.`);
+    return;
+  }
+
+  // Only the plain name goes in the box. "Looks like ..." is a screen message, never printed.
+  const filledName = !dishName && data.dish_guess;
+  if (filledName) form.elements.dish_name.value = data.dish_guess.slice(0, LIMITS.dishName);
+
   suggestedList = data.ingredients.join(', ');
   const box = form.elements.ingredients;
   const hasOwnList = box.value.trim() !== '';
-  if (suggestedList && !hasOwnList) box.value = suggestedList;
+  if (!hasOwnList) box.value = suggestedList;
 
-  suggestNote.textContent = [
-    data.ingredients.length
-      ? (hasOwnList ? 'You already typed a list, so we kept it.' : 'We filled in the ingredients below. Please check them and fix anything that\'s wrong.')
-      : 'No ingredients suggested.',
-    data.note,
-  ].filter(Boolean).join(' ');
-  suggestUse.hidden = !(hasOwnList && suggestedList);
-  renderMaybeChips(data);
+  suggestNote.textContent = hasOwnList
+    ? '✓ You already typed a list, so we kept it.'
+    : filledName
+      ? `✓ Looks like ${data.dish_guess}. Check the name and list below.`
+      : `✓ Filled in from your ${source}. Check the list below.`;
+  suggestUse.hidden = !hasOwnList;
   suggestResult.hidden = false;
+  applyAiTicks(data, source);
   form.dispatchEvent(new Event('input'));
 });
 
@@ -327,6 +341,14 @@ document.getElementById('another-btn').addEventListener('click', () => {
   form.hidden = false;
   form.elements.dish_name.focus();
 });
+
+// "Made by" links (thank-you screen + footer), filled from constants.js so the name lives in one place.
+for (const link of document.querySelectorAll('.credit-link')) {
+  link.textContent = CREDIT.name;
+  link.href = CREDIT.url;
+  link.target = '_blank';
+  link.rel = 'noopener';
+}
 
 loadDraft();
 renderPreview();

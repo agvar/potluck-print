@@ -3,6 +3,7 @@
 // edit / reprint, allergen summary, guest QR code and label settings.
 import './styles.css';
 import QRCode from 'qrcode';
+import { buildQrSignPdf } from './sign-pdf.js';
 import { supabase, isConfigured, showConfigError } from './supabase.js';
 import { ALLERGENS, DIET_TAGS, labelFor } from './constants.js';
 import {
@@ -531,6 +532,8 @@ window.addEventListener('afterprint', () => document.body.classList.remove('prin
 // ---------------------------------------------------------------------
 // Guest QR code
 // ---------------------------------------------------------------------
+let signQr = null; // made ahead of time: the print tap must open the PDF without waiting
+
 async function renderQr() {
   const guestUrl = `${location.origin}/`;
   const dataUrl = await QRCode.toDataURL(guestUrl, { width: 640, margin: 2, errorCorrectionLevel: 'M' });
@@ -538,7 +541,17 @@ async function renderQr() {
   $('qr-download').href = dataUrl;
   $('guest-link').href = guestUrl;
   $('guest-link').textContent = guestUrl;
+  // Sharper copy for paper: 1024 px for a 3.5" code is ~290 dots per inch.
+  signQr = { url: guestUrl, dataUrl: await QRCode.toDataURL(guestUrl, { width: 1024, margin: 1, errorCorrectionLevel: 'M' }) };
 }
+
+$('qr-sign-btn').addEventListener('click', () => {
+  if (!signQr) return;
+  // On your Mac (localhost) the code would point at your computer, not the real site.
+  if (!location.protocol.startsWith('https') &&
+      !confirm(`This sign's QR code points to ${signQr.url}, which guests' phones can't open. Print anyway?`)) return;
+  deliverPdf(buildQrSignPdf(signQr.dataUrl, signQr.url), 'potluck-qr-signs.pdf');
+});
 
 // ---------------------------------------------------------------------
 // Printer & label settings
