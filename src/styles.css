@@ -172,3 +172,19 @@ dialog::backdrop { background: rgb(0 0 0 / 0.45); }
 #suggest-use { width: 100%; margin-bottom: 10px; }
 .chips button.maybe { min-height: 38px; padding: 6px 12px; border-radius: 999px; font-size: 0.95rem; border-style: dashed; }
 .chips button.maybe.yes { border-style: solid; border-color: var(--accent); }
+
+/* Guest page: ingredient chips with a × to remove one */
+.ing-list { margin: -6px 0 14px; }
+.ing-list p { margin: 0 0 6px; }
+.ing-chip {
+  display: inline-flex; align-items: center; gap: 2px;
+  padding: 2px 2px 2px 12px;
+  border: 1px solid var(--line); border-radius: 999px;
+  background: var(--bg); font-size: 0.95rem;
+}
+.ing-chip button {
+  min-height: 36px; min-width: 36px; padding: 0;
+  border: 0; border-radius: 999px; background: transparent;
+  color: var(--muted); font-size: 1.2rem; line-height: 1;
+}
+.ing-chip button:active { background: var(--line); }

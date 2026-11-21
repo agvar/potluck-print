@@ -1,7 +1,7 @@
 // Guest page: fill in the dish, preview the label, submit it to the print queue.
 import './styles.css';
 import { supabase, isConfigured, showConfigError } from './supabase.js';
-import { ALLERGENS, DIET_TAGS, LIMITS, labelFor, ingredientsAsLine } from './constants.js';
+import { ALLERGENS, DIET_TAGS, LIMITS, labelFor, ingredientsAsLine, splitIngredients } from './constants.js';
 
 if (!isConfigured) {
   showConfigError();
@@ -65,6 +65,38 @@ function renderPreview() {
   );
 }
 
+// ---- Ingredient chips: the text box stays the real value; chips are a quick way to
+// remove one item without editing a long line of text on a phone. ----
+const ingList = document.getElementById('ing-list');
+const ingChips = document.getElementById('ing-chips');
+
+function renderIngredientChips() {
+  const items = splitIngredients(form.elements.ingredients.value);
+  ingList.hidden = items.length < 2; // one item is easy enough to delete by hand
+  ingChips.replaceChildren(...items.map((item, index) => {
+    const chip = el('span', 'ing-chip', item);
+    const remove = el('button', null, '×');
+    remove.type = 'button';
+    remove.dataset.index = index;
+    remove.setAttribute('aria-label', `Remove ${item}`);
+    chip.append(remove);
+    return chip;
+  }));
+}
+
+ingChips.addEventListener('click', (event) => {
+  const button = event.target.closest('button[data-index]');
+  if (!button) return;
+  const index = Number(button.dataset.index);
+  const items = splitIngredients(form.elements.ingredients.value);
+  items.splice(index, 1);
+  form.elements.ingredients.value = items.join(', ');
+  form.dispatchEvent(new Event('input')); // preview, counter, draft, chips
+  // Keep the keyboard / screen-reader focus on a nearby ×, not lost at the top of the page.
+  const buttons = ingChips.querySelectorAll('button');
+  buttons[Math.min(index, buttons.length - 1)]?.focus({ preventScroll: true });
+});
+
 // ---- Character counters ----
 function renderCounters() {
   const d = readForm();
@@ -109,6 +141,7 @@ function showError(text) {
 
 form.addEventListener('input', () => {
   renderPreview();
+  renderIngredientChips();
   renderCounters();
   saveDraft();
   showError('');
@@ -137,6 +170,7 @@ form.addEventListener('submit', async (event) => {
   clearPhoto();
   clearSuggestion();
   renderPreview();
+  renderIngredientChips();
   form.hidden = true;
   doneCard.hidden = false;
   window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -296,4 +330,5 @@ document.getElementById('another-btn').addEventListener('click', () => {
 
 loadDraft();
 renderPreview();
+renderIngredientChips();
 renderCounters();

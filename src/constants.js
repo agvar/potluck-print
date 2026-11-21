@@ -32,11 +32,15 @@ export const LIMITS = {
 
 export const labelFor = (list, key) => list.find((x) => x.key === key)?.label ?? key;
 
-// "mango, onion\ncilantro" -> "mango, onion, cilantro"
-export function ingredientsAsLine(text) {
+// "mango, onion\ncilantro" -> ["mango", "onion", "cilantro"]
+export function splitIngredients(text) {
   return String(text ?? '')
     .split(/[\n,;]+/)
     .map((s) => s.trim())
-    .filter(Boolean)
-    .join(', ');
+    .filter(Boolean);
+}
+
+// "mango, onion\ncilantro" -> "mango, onion, cilantro"
+export function ingredientsAsLine(text) {
+  return splitIngredients(text).join(', ');
 }
