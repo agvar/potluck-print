@@ -32,8 +32,9 @@ Guest phone (mobile data)                         Your iPhone (same Wi-Fi as pri
 | File | What it does |
 |---|---|
 | `index.html` + `src/guest.js` | Guest form, live label preview, submit |
-| `admin.html` + `src/admin.js` | Sign in, live queue, print pair / single / leftover half, edit, reprint, allergen list, QR code, calibration |
-| `src/label-pdf.js` | Draws the labels on a Letter page, in inches. Also runs in Node |
+| `admin.html` + `src/admin.js` | Sign in, live queue, print next / all waiting (plus DeskJet pair and leftover half), edit, reprint, allergen list, QR code and table signs, calibration |
+| `src/label-pdf.js` | Draws the labels for the 62 mm roll or 7" × 5" sheets, in inches. Also runs in Node |
+| `src/sign-pdf.js` | Draws the printable QR table signs, two per Letter page |
 | `src/constants.js` | Allergen + diet lists, length limits |
 | `src/supabase.js` | Database connection |
 | `src/styles.css` | Shared look (phone-first, light/dark) |

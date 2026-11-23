@@ -110,7 +110,10 @@ function renderCounters() {
 
 // ---- Save a draft so a refresh or accidental back doesn't lose typing ----
 function saveDraft() {
-  try { localStorage.setItem(DRAFT_KEY, JSON.stringify(readForm())); } catch { /* private mode */ }
+  // The AI fields live only in this draft; readForm() is what goes to the database.
+  const aiTicked = [...form.querySelectorAll('label.ai-ticked input')].map((i) => `${i.name}:${i.value}`);
+  const draft = { ...readForm(), ai_ticked: aiTicked, ai_list: suggestedList };
+  try { localStorage.setItem(DRAFT_KEY, JSON.stringify(draft)); } catch { /* private mode */ }
 }
 function loadDraft() {
   let d;
@@ -119,7 +122,11 @@ function loadDraft() {
   for (const f of ['dish_name', 'cook_name', 'ingredients']) form.elements[f].value = d[f] ?? '';
   for (const input of form.querySelectorAll('input[type=checkbox]')) {
     input.checked = (d[input.name] ?? []).includes(input.value);
+    const wasAi = Array.isArray(d.ai_ticked) && d.ai_ticked.includes(`${input.name}:${input.value}`);
+    input.closest('label').classList.toggle('ai-ticked', input.checked && wasAi);
   }
+  suggestedList = typeof d.ai_list === 'string' ? d.ai_list : '';
+  renderAiNote();
 }
 function clearDraft() {
   try { localStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ }
@@ -187,7 +194,8 @@ const suggestNote = document.getElementById('suggest-note');
 const suggestUse = document.getElementById('suggest-use');
 const aiTickedNote = document.getElementById('ai-ticked-note');
 let photoDataUrl = null;
-let suggestedList = '';
+let suggestedList = ''; // the AI's latest list, used to tell it apart from a list the guest edited
+let latestSuggestion = null;
 
 function showSuggestError(text) {
   suggestError.textContent = text;
@@ -220,16 +228,34 @@ function clearPhoto() {
   photoThumb.removeAttribute('src');
 }
 
-function clearAiTicks() {
-  for (const label of form.querySelectorAll('label.ai-ticked')) label.classList.remove('ai-ticked');
-  aiTickedNote.hidden = true;
+// The note follows the ✨ boxes, so it's right after a tap, a retry or a refresh.
+function renderAiNote() {
+  const count = form.querySelectorAll('label.ai-ticked').length;
+  aiTickedNote.textContent = `✨ We ticked ${count === 1 ? 'a box' : 'boxes'} below. Untick any that are wrong.`;
+  aiTickedNote.hidden = count === 0;
 }
 
-function clearSuggestion() {
+// Untick what the AI ticked and the guest never touched. Boxes the guest chose have no ✨.
+function removeAiTicks() {
+  for (const label of form.querySelectorAll('label.ai-ticked')) {
+    label.querySelector('input').checked = false;
+    label.classList.remove('ai-ticked');
+  }
+  renderAiNote();
+}
+
+function hideSuggestMessages() {
   suggestResult.hidden = true;
-  suggestedList = '';
-  clearAiTicks();
   showSuggestError('');
+}
+
+// After a submit: the ticks stay as the form reset left them, only the AI's memory goes.
+function clearSuggestion() {
+  hideSuggestMessages();
+  suggestedList = '';
+  latestSuggestion = null;
+  for (const label of form.querySelectorAll('label.ai-ticked')) label.classList.remove('ai-ticked');
+  renderAiNote();
 }
 
 photoInput.addEventListener('change', async () => {
@@ -252,33 +278,32 @@ document.getElementById('photo-remove').addEventListener('click', clearPhoto);
 // them with ✨ so the guest can see which ticks came from the AI. A wrong tick only over-warns;
 // an untapped "Dairy?" question would have left a real allergen off the label.
 // Promise tags (vegan, gluten-free, ...) are never ticked here: the server doesn't send them.
-function applyAiTicks(data, source) {
+function applyAiTicks(data) {
   const ticks = [
     ...data.possible_allergens.map((key) => ['allergens', key]),
     ...data.possible_diet_tags.map((key) => ['diet_tags', key]),
   ];
-  let count = 0;
   for (const [name, key] of ticks) {
     const checkbox = form.querySelector(`input[name="${name}"][value="${CSS.escape(key)}"]`);
-    if (!checkbox || checkbox.checked) continue; // already ticked by the guest: leave it alone
+    if (!checkbox || checkbox.checked) continue; // already ticked: leave it alone
     checkbox.checked = true;
     checkbox.closest('label').classList.add('ai-ticked');
-    count += 1;
   }
-  aiTickedNote.textContent = `✨ We ticked ${count === 1 ? 'a box' : 'boxes'} below from your ${source}. Untick any that are wrong.`;
-  aiTickedNote.hidden = count === 0;
+  renderAiNote();
 }
 
 // Once the guest taps a box the AI ticked, it's their decision: drop the ✨.
 form.addEventListener('change', (event) => {
   const label = event.target.closest?.('label.ai-ticked');
-  if (label) label.classList.remove('ai-ticked');
-  if (!form.querySelector('label.ai-ticked')) aiTickedNote.hidden = true;
+  if (!label) return;
+  label.classList.remove('ai-ticked');
+  renderAiNote();
+  saveDraft(); // the input event saved the draft just before the ✨ was removed
 });
 
 suggestBtn.addEventListener('click', async () => {
   const dishName = form.elements.dish_name.value.trim();
-  clearSuggestion();
+  hideSuggestMessages(); // a failed try below must leave the ticks and their ✨ as they are
   if (!dishName && !photoDataUrl) {
     showSuggestError('Type the dish name or add a photo first.');
     return form.elements.dish_name.focus();
@@ -314,10 +339,17 @@ suggestBtn.addEventListener('click', async () => {
   const filledName = !dishName && data.dish_guess;
   if (filledName) form.elements.dish_name.value = data.dish_guess.slice(0, LIMITS.dishName);
 
-  suggestedList = data.ingredients.join(', ');
+  // Ticks follow the list. If the guest edited the list we keep it, and keep the old ✨ ticks
+  // too: unticking Dairy while the list still says "cheese" would under-warn.
   const box = form.elements.ingredients;
-  const hasOwnList = box.value.trim() !== '';
-  if (!hasOwnList) box.value = suggestedList;
+  const current = box.value.trim();
+  const hasOwnList = current !== '' && current !== suggestedList;
+  suggestedList = data.ingredients.join(', ');
+  latestSuggestion = data;
+  if (!hasOwnList) {
+    box.value = suggestedList;
+    removeAiTicks();
+  }
 
   suggestNote.textContent = hasOwnList
     ? '✓ You already typed a list, so we kept it.'
@@ -326,13 +358,15 @@ suggestBtn.addEventListener('click', async () => {
       : `✓ Filled in from your ${source}. Check the list below.`;
   suggestUse.hidden = !hasOwnList;
   suggestResult.hidden = false;
-  applyAiTicks(data, source);
+  applyAiTicks(data);
   form.dispatchEvent(new Event('input'));
 });
 
 suggestUse.addEventListener('click', () => {
   form.elements.ingredients.value = suggestedList;
   suggestUse.hidden = true;
+  removeAiTicks();
+  if (latestSuggestion) applyAiTicks(latestSuggestion);
   form.dispatchEvent(new Event('input'));
 });
 

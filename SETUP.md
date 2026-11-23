@@ -64,7 +64,7 @@ npm run dev
 
 **Try it:** submit a dish on the guest page, then sign in on the admin page. The dish should
 appear in *Waiting*. Submit a second one; it should pop up within a second with a chime.
-Tap **Print next 2** and the label PDF opens.
+Tap **Print next** and the label PDF opens.
 
 > **Test on your iPhone before deploying (optional):** with your iPhone on the same home Wi-Fi,
 > run `npm run dev -- --host`. Vite prints a *Network* address like `http://192.168.1.20:5173`;
@@ -161,8 +161,8 @@ Admin page → **Printer & label settings** → choose **DeskJet**, then:
    - Labels a different size or position? Measure your sheet and fix the margins.
 4. Load **one label sheet**. Note which way up it goes (on most DeskJets it's
    *label side up, top edge going in first*). → **Print sample labels**.
-5. Test a **single** label: submit 1 dish → *Print alone on a fresh sheet* → then submit
-   another → *Print on leftover bottom half* → feed the same sheet back in the **same way**.
+5. Test a **single** label: submit 1 dish → **Print (dish) alone on a fresh sheet** → then submit
+   another → **Print (dish) on leftover bottom half** → feed the same sheet back in the **same way**.
 
 ---
 
@@ -183,8 +183,9 @@ Guests don't need any of these. They use their own mobile data.
 ## Part 7: AI "Suggest ingredients" button (optional), ~10 min
 
 **Why:** guests type the dish name (and can add a photo), tap **✨ Suggest ingredients**, and
-get a draft list to fix instead of typing it all. The AI only *suggests*. Allergens it suspects
-appear as "Dairy?" buttons the guest must tap, so nothing is ticked without a human.
+get a draft list to fix instead of typing it all. The AI only *suggests*. It pre-ticks likely
+allergens and warnings (spicy, pork, beef) with a ✨ for the guest to check, and never ticks
+promises like vegan or gluten-free.
 
 1. **Database limits:** re-run [`supabase/setup.sql`](supabase/setup.sql) (section 7 adds them).
    Each phone gets 8 suggestions per 10 minutes and everyone together gets 300 a day. Without
@@ -219,7 +220,7 @@ On Vercel, redeploy after changing a variable. **Turn the button off** anytime:
 - [ ] iPhone: charged and **plugged in**, Auto-Lock **Never**, Focus/Do Not Disturb **off**
 - [ ] ntfy notifications working (submit a test dish, then delete it in Edit)
 - [ ] Admin page open and signed in, "live" badge showing
-- [ ] QR code sign taped up (Admin → Guest QR code → Download)
+- [ ] QR table signs printed and taped up (Admin → Guest QR code → **Print table signs**)
 - [ ] Spare label sheets and plain paper for the allergen list
 - [ ] Backup: if the network fails, guests can still submit; you print later or from another spot
 
